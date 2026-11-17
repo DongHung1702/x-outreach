@@ -1,0 +1,21 @@
+<section class="panel">
+  <h2>Sending</h2>
+  <div class="pad">
+    {% if side.paused %}<span class="st bad"><i></i>Paused</span>
+    {% elif live and not me %}<span class="st warn"><i></i>Waiting for an X account</span>
+    {% else %}<span class="st good"><i></i>On</span>{% endif %}
+    <p class="small mute" style="margin-top:6px">{{ (side.outcome[:1]|upper ~ side.outcome[1:]) if side.outcome else 'Nothing sent yet.' }}</p>
+    <form method="post" action="/settings/pause" style="margin-top:10px">
+      <input type="hidden" name="paused" value="{{ '0' if side.paused else '1' }}">
+      <button class="sm {{ 'dark' if side.paused }}">{{ 'Resume sending' if side.paused else 'Pause sending' }}</button>
+    </form>
+  </div>
+  <div class="kv"><span>Sent, last 24h</span><b>{{ side.sent24 }} of {{ side.cap }}</b></div>
+  <div class="kv"><span>Queued</span><b>{{ side.queued }}</b></div>
+  <div class="kv"><span>Inbox checked</span><b>{{ side.last_sync|ago or 'never' }}</b></div>
+</section>
+<section class="panel">
+  <h2>Spend</h2>
+  <div class="pad"><div class="big">${{ '%.2f' % side.costs.total }}</div>
+    <p class="small mute">Estimated from X’s pay-per-use prices. X ${{ '%.2f' % side.costs.get('x', 0) }}, AI ${{ '%.2f' % side.costs.get('llm', 0) }}. <a href="/settings#spend">Details</a></p></div>
+</section>

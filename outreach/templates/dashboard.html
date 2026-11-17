@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% import "_m.html" as m with context %}
+{% block heading %}Home{% endblock %}
+{% block body %}
+{% if live and not me %}
+<div class="note">No X account connected yet. <a href="/settings">Connect it in Settings</a>. Nothing will be sent until you do.</div>
+{% endif %}
+
+{% if not campaigns %}
+<div style="padding:16px 16px 4px">
+  <p style="font-size:17px">Find AI and robotics builders on X, get a personal first message drafted for each, and send only the ones you approve. Replies show up here.</p>
+  {% if not live %}<p class="small mute" style="margin-top:6px">You’re looking at demo data: fictional people, and nothing is sent to X.</p>{% endif %}
+</div>
+{% endif %}
+<h2 class="section">Needs you<span class="sub">Replies to answer, drafts to review, sends that went wrong.</span></h2>
+
+{% if drafts %}
+<a class="item link" href="/review" style="color:inherit;text-decoration:none">
+  <span class="av" style="--h:205">{{ m.icon('review', 20) }}</span>
+  <div class="body">
+    <div class="who"><b>{{ drafts }} draft{{ 's' if drafts != 1 }} waiting for review</b></div>
+    <p class="meta">Nothing is sent until you approve it.</p>
+  </div>
+</a>
+{% endif %}
+
+{% for msg_ in needs %}
+<article class="item">
+  {{ m.avatar(msg_.username, msg_.name) }}
+  <div class="body">
+    <div class="who">
+      <b>{{ msg_.name or msg_.username }}</b>
+      {{ m.handle(msg_.username) }}
+      <span class="h">· {{ msg_.updated_at|ago }}</span>
+    </div>
+    {% if msg_.replied_at and not msg_.reply_seen %}
+      <p class="st good" style="margin-top:2px"><i></i>Replied</p>
+      <p class="text">{{ msg_.last_reply or '(open X to read the reply)' }}</p>
+      <div class="acts">
+        {{ m.open_x() }}
+        <form class="inline" method="post" action="/messages/{{ msg_.id }}/seen"><input type="hidden" name="next" value="/"><button class="sm">Done</button></form>
+      </div>
+    {% elif msg_.status == 'needs_check' %}
+      <p class="st bad" style="margin-top:2px"><i></i>Check on X</p>
+      <p class="text">X didn’t confirm this message arrived, so we won’t resend it on a guess. Check your DMs with @{{ msg_.username }}, then tell us what you see.</p>
+      <p class="small mute" style="margin-top:4px">{{ msg_.error }}</p>
+      <div class="acts">
+        {{ m.open_x('Open X', 'sm') }}
+        <form class="inline" method="post" action="/messages/{{ msg_.id }}/sent"><input type="hidden" name="next" value="/"><button class="dark sm">It arrived</button></form>
+        <form class="inline" method="post" action="/messages/{{ msg_.id }}/requeue"><input type="hidden" name="next" value="/"><button class="sm">It didn’t, send again</button></form>
+      </div>
+    {% else %}
+      <p class="st bad" style="margin-top:2px"><i></i>Not sent</p>
+      <p class="text">{{ msg_.error }}</p>
+      <div class="acts">
+        <form class="inline" method="post" action="/messages/{{ msg_.id }}/retry"><input type="hidden" name="next" value="/"><button class="sm">Try again</button></form>
+      </div>
+    {% endif %}
+  </div>
+</article>
+{% endfor %}
+
+{% if not drafts and not needs %}
+<div class="empty"><b>You’re all caught up</b>New replies and anything that needs a decision will show up here.</div>
+{% endif %}
+
+<h2 class="section">Campaigns</h2>
+{% for c in campaigns %}
+<a class="item link" href="/campaigns/{{ c.id }}" style="color:inherit;text-decoration:none">
+  {{ m.avatar(c.name) }}
+  <div class="body">
+    <div class="who"><b>{{ c.name }}</b><span class="h">· {{ c.created_at|ago }}</span></div>
+    <p class="meta" style="overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{ c.segment }}</p>
+  </div>
+  <div class="score"><b>{{ c.n }}</b><span>people</span></div>
+</a>
+{% else %}
+<div class="empty"><b>No campaigns yet</b>Describe who you want to meet and the tool finds them. <div class="acts"><a class="btn blue" href="/campaigns/new">New campaign</a></div></div>
+{% endfor %}
+
+{% if activity %}
+<details class="log">
+  <summary>Activity log</summary>
+  <pre class="log">{% for a in activity %}{{ a.at|ago }}  {{ a.kind }}  {{ a.detail }}
+{% endfor %}</pre>
+</details>
+{% endif %}
+{% endblock %}
+
+{% block aside %}
+{% include "_side.html" %}
+<section class="panel">
+  <h2>Totals</h2>
+  <div class="kv"><span>Drafts</span><b>{{ counts.get('draft', 0) }}</b></div>
+  <div class="kv"><span>Sent</span><b>{{ counts.get('sent', 0) }}</b></div>
+  <div class="kv"><span>Replied</span><b>{{ replied }}{% if counts.get('sent') %} <span class="mute small">({{ (100 * replied / counts.get('sent'))|round|int }}%)</span>{% endif %}</b></div>
+  <div class="kv"><span>Blocked or failed</span><b>{{ counts.get('blocked', 0) + counts.get('failed', 0) }}</b></div>
+</section>
+{% endblock %}

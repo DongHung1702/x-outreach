@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% import "_m.html" as m with context %}
+{% block heading %}Sent{% endblock %}
+{% block subhead %}<p class="sub">Inbox checked {{ side.last_sync|ago or 'never' }}</p>{% endblock %}
+{% block actions %}<form class="actions" method="post" action="/inbox/sync"><button class="sm">Check inbox</button></form>{% endblock %}
+{% block body %}
+{% for r in rows %}
+{% set thread = convo[r.id] %}
+<article class="item">
+  {{ m.avatar(r.username, r.name) }}
+  <div class="body">
+    <div class="who">
+      <b>{{ r.name or r.username }}</b>
+      {{ m.handle(r.username) }}
+      <span class="h">· {{ (r.sent_at or r.updated_at)|ago }}</span>
+      <span style="margin-left:auto">{% if r.replied_at %}<span class="st good"><i></i>replied</span>{% else %}{{ m.status(r.status) }}{% endif %}</span>
+    </div>
+    <p class="meta small">{{ r.campaign }}</p>
+    {% if r.error and r.status != 'sent' %}<div class="issue {{ 'block' if r.status in ('failed','needs_check') else 'warn' }}" style="margin-top:4px">{{ m.icon('warn', 16) }}<span>{{ r.error }}</span></div>{% endif %}
+    <div class="thread">
+      {% if thread %}
+        {% if not (thread|selectattr('sender_id','equalto',me_id)|list) %}
+        <div class="bub me">{{ r.text }}</div><div class="bub-t me">{{ r.sent_at|ago }}</div>
+        {% endif %}
+        {% for e in thread %}
+        {% set mine = e.sender_id == me_id %}
+        <div class="bub {{ 'me' if mine else 'them' }}">{{ e.text }}</div>
+        <div class="bub-t {{ 'me' if mine }}">{{ e.created_at|ago }}</div>
+        {% endfor %}
+      {% else %}
+        <div class="bub me" style="{{ 'opacity:.6' if r.status != 'sent' }}">{{ r.text }}</div>
+        <div class="bub-t me">{{ 'not delivered' if r.status in ('failed','blocked') else ('waiting to send' if r.status == 'approved' else r.status|replace('_',' ')) }}</div>
+      {% endif %}
+    </div>
+  </div>
+</article>
+{% else %}
+<div class="empty"><b>Nothing sent yet</b>Approved messages appear here with any replies.</div>
+{% endfor %}
+{% endblock %}

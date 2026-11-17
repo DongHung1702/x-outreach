@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% import "_m.html" as m with context %}
+{% block heading %}Review{% endblock %}
+{% block subhead %}<p class="sub">{{ rows|selectattr('status','equalto','draft')|list|length }} to review · edit the text, then approve</p>{% endblock %}
+{% block body %}
+{% set n_drafts = rows|selectattr('status','equalto','draft')|list|length %}
+{% if rows and not n_drafts %}
+<div class="empty" style="border-bottom:1px solid var(--line)"><b>All done</b>Every draft is reviewed. {{ rows|length }} approved message{{ 's' if rows|length != 1 }} will go out one by one, within your daily limit.</div>
+{% endif %}
+{% for r in rows %}
+{% set issues = r.issues|fromjson %}
+{% set cites = r.citations|fromjson %}
+{% set cited_ids = cites|map(attribute='source_id')|list %}
+{% set blocked = issues|selectattr('level','equalto','block')|list %}
+{% set evidence = r.evidence|fromjson %}
+{% set cited_ev = evidence|selectattr('id','in',cited_ids)|list %}
+{% set other_ev = evidence|rejectattr('id','in',cited_ids)|list %}
+<article class="item post" id="m{{ r.id }}">
+  {{ m.avatar(r.username, r.name) }}
+  <div class="body">
+    <div class="who">
+      <b>{{ r.name or r.username }}</b>
+      {{ m.handle(r.username) }}
+      <span class="h">· fit {{ r.score }}</span>
+      {% if r.sea_signal %}<span class="h" title="Lives in or works with Southeast Asia">· Southeast Asia</span>{% endif %}
+      {% if r.status == 'approved' %}<span style="margin-left:auto">{{ m.status('approved') }}</span>{% endif %}
+    </div>
+    <p class="meta small">{{ r.role|capitalize }}{% if r.location %} · {{ r.location }}{% endif %} · {{ '{:,}'.format(r.followers) }} followers · {{ r.campaign }}</p>
+
+    <form method="post" action="/messages/{{ r.id }}/approve">
+      <input type="hidden" name="next" value="/review#m{{ r.id }}">
+      <label class="skip" for="t{{ r.id }}">Message to @{{ r.username }}</label>
+      <textarea class="posttext" id="t{{ r.id }}" name="text" {% if r.status == 'approved' %}readonly{% endif %}
+        data-max="{{ max_chars }}" oninput="var c=this.form.querySelector('.counter');c.textContent=this.value.length+' / {{ max_chars }}';c.classList.toggle('over',this.value.length>{{ max_chars }});this.form.querySelector('.dirty').hidden=false">{{ r.text }}</textarea>
+      <div class="counter {{ 'over' if r.text|length > max_chars }}">{{ r.text|length }} / {{ max_chars }}</div>
+
+      {% if issues %}<div class="issues">
+        {% for i in issues %}<div class="issue {{ i.level }}">{{ m.icon('x' if i.level == 'block' else 'warn', 16) }}<span>{{ i.msg[:1]|upper }}{{ i.msg[1:] }}</span></div>{% endfor %}
+      </div>{% endif %}
+      <p class="issue warn dirty" hidden>{{ m.icon('warn', 16) }}<span>Unsaved edits. Approving saves them and re-runs the checks.</span></p>
+
+      <div class="quote" aria-label="Evidence from their profile">
+        {% for e in cited_ev %}
+        <div class="q cited">
+          <div class="meta">{{ 'Bio' if e.id == 'bio' else 'Post' }}{% if e.created_at %} · {{ e.created_at|ago }}{% endif %} · <span class="st good">{{ m.icon('check', 14) }}used in the message</span></div>
+          <div>{{ e.text }}</div>
+        </div>
+        {% endfor %}
+        {% if other_ev %}
+        <details>
+          <summary>Show {{ other_ev|length }} more from their profile</summary>
+          {% for e in other_ev[:8] %}
+          <div class="q"><div class="meta">{{ 'Bio' if e.id == 'bio' else 'Post' }}{% if e.created_at %} · {{ e.created_at|ago }}{% endif %}</div><div>{{ e.text }}</div></div>
+          {% endfor %}
+        </details>
+        {% endif %}
+      </div>
+
+      {% set reasons = r.reasons|fromjson %}
+      {% set flags = r.red_flags|fromjson %}
+      {% if reasons or flags %}
+      <div class="why">Why they fit{% if r.focus %}: {{ r.focus }}{% endif %}
+        <ul>
+          {% for x in reasons %}<li>{{ x.claim }}{% if x.quote %} <q>{{ x.quote }}</q>{% endif %}</li>{% endfor %}
+          {% for f in flags %}<li style="color:var(--warn)">{{ f }}</li>{% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      <div class="acts">
+        {% if r.status == 'draft' %}
+          <button class="blue">{{ 'Save & approve' if blocked else 'Approve' }}</button>
+          <button class="sm" formaction="/messages/{{ r.id }}/save">Save</button>
+          <button class="text sm" formaction="/messages/{{ r.id }}/regenerate" title="Write a new draft from the same evidence">Rewrite</button>
+          <button class="text sm" formaction="/messages/{{ r.id }}/reject" style="margin-left:auto;color:var(--bad)" onclick="return confirm('Skip @{{ r.username }}? They won’t be messaged from this campaign.')">Skip</button>
+        {% else %}
+          <button class="sm" formaction="/messages/{{ r.id }}/unapprove">Move back to drafts</button>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</article>
+{% else %}
+<div class="empty"><b>Nothing to review</b>Run a campaign and good fits show up here as drafts. <div class="acts"><a class="btn" href="/campaigns/new">New campaign</a></div></div>
+{% endfor %}
+{% endblock %}

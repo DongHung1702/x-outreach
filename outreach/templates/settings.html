@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% import "_m.html" as m with context %}
+{% block heading %}Settings{% endblock %}
+{% set LABELS = {
+  'tweets/search/recent': 'Searches (posts read)', 'users/by': 'Seed account lookups',
+  'users/following': 'Accounts followed by seeds', 'users/tweets': 'Recent posts read',
+  'dm_conversations/with/dm_events': 'Checks before sending', 'dm_events': 'Inbox checks (messages read)',
+  'dm_conversations/with/messages': 'Messages sent', 'users/me': 'Account check',
+  'screen': 'First-look scoring', 'qualify_draft': 'Closer look + draft', 'suggest_query': 'Search suggestions',
+  'dm send': 'Messages sent (demo)'} %}
+{% block body %}
+<h2 class="section" id="mode">X account</h2>
+<div style="padding:0 16px 16px;border-bottom:1px solid var(--line)">
+  {% if not live %}
+    <p><span class="st warn"><i></i>Demo data</span></p>
+    <p style="margin-top:6px">Everyone you see is fictional and nothing is sent to X, so you can click through safely. Messages “arrive” instantly and a few demo people reply.</p>
+  {% elif connected %}
+    <div class="item" style="padding:8px 0;border:0">{{ m.avatar(me) }}<div class="body"><div class="who"><b>@{{ me }}</b></div><p class="meta small">Messages are sent from this account.</p></div></div>
+    <form method="post" action="/auth/disconnect" onsubmit="return confirm('Disconnect @{{ me }}? Sending stops until you reconnect.')"><button class="danger sm">Disconnect</button></form>
+  {% else %}
+    <p>Connect the account that should send the messages. X will ask you to allow reading and sending DMs.</p>
+    <div class="acts"><a class="btn blue" href="/auth/login">Connect X account</a></div>
+  {% endif %}
+</div>
+
+<h2 class="section">Safety limits</h2>
+<ul style="margin:0;padding:0 16px 16px 36px;border-bottom:1px solid var(--line);line-height:1.5">
+  <li>At most <b>{{ s.daily_send_cap }}</b> messages a day, at least <b>{{ s.min_seconds_between_sends }} seconds</b> apart. X allows far more; staying low keeps the account in good standing.</li>
+  <li>Each person gets one message at most, across every campaign. We also check X for an existing conversation right before sending.</li>
+  <li>If X doesn’t confirm a send, we stop and ask you. We never resend on a guess.</li>
+  <li>A reply like “stop” or “not interested” puts that person on the do-not-contact list.</li>
+  <li>Scoring and drafts use {{ 'Claude' if llm_name.startswith('Claude') else 'simple keyword matching' }}.</li>
+</ul>
+
+<h2 class="section" id="spend">Spend <span class="sub">An estimate from X’s pay-per-use price list. Your X developer console shows the real bill.</span></h2>
+<div style="overflow-x:auto;border-bottom:1px solid var(--line)">
+<table style="width:100%;border-collapse:collapse;font-size:14px;min-width:340px">
+  <thead><tr style="color:var(--mute);text-align:left"><th style="padding:8px 16px;font-weight:600">What</th><th style="padding:8px;font-weight:600;text-align:right">Count</th><th style="padding:8px 16px;font-weight:600;text-align:right">Cost</th></tr></thead>
+  {% for u in usage %}
+  <tr style="border-top:1px solid var(--line)"><td style="padding:8px 16px">{{ LABELS.get(u.endpoint, u.endpoint) }}</td><td style="padding:8px;text-align:right">{{ u.units }}</td><td style="padding:8px 16px;text-align:right">${{ '%.2f' % u.cost }}</td></tr>
+  {% else %}<tr><td colspan="3" class="mute" style="padding:8px 16px">Nothing spent yet.</td></tr>{% endfor %}
+  <tr style="border-top:1px solid var(--line);font-weight:700"><td style="padding:8px 16px">Total</td><td></td><td style="padding:8px 16px;text-align:right">${{ '%.2f' % costs.total }}</td></tr>
+</table>
+</div>
+
+<h2 class="section">Do-not-contact</h2>
+{% for d in dnc %}
+<div class="item"><div class="body"><div class="who"><b>{{ d.x_user_id }}</b><span class="h">· {{ d.at|ago }}</span></div><p class="meta small">{{ d.reason[:1]|upper }}{{ d.reason[1:] }}</p></div></div>
+{% else %}<div class="empty" style="padding-top:4px">Nobody yet. People land here when they ask you to stop, or when you choose “Never contact”.</div>{% endfor %}
+
+<h2 class="section">Recent runs</h2>
+{% for j in jobs %}
+<details class="log"><summary><span class="st {{ {'done':'good','error':'bad'}.get(j.status, 'mute') }}"><i></i>{{ {'done':'finished','error':'failed'}.get(j.status, j.status) }}</span> · {{ {'discover':'find people','deep':'closer look','sync':'inbox check'}.get(j.kind, j.kind) }} · {{ j.created_at|ago }}</summary><pre class="log">{{ j.log }}</pre></details>
+{% else %}<div class="empty" style="padding-top:4px">No runs yet.</div>{% endfor %}
+
+<details class="log" style="border-top:1px solid var(--line);margin-top:8px">
+  <summary>For whoever sets this up</summary>
+  <div style="padding:0 16px 16px;font-size:14px;line-height:1.5">
+    <p>Settings live in the <code>.env</code> file next to the app; restart after changing it.</p>
+    <ul style="padding-left:20px;margin:6px 0">
+      <li>Real X account: <code>X_CLIENT_ID</code>, <code>X_CLIENT_SECRET</code>. Callback URL to register in the X developer console: <code>{{ s.redirect_uri }}</code></li>
+      <li>Claude for scoring and drafts: <code>ANTHROPIC_API_KEY</code> (now: {{ llm_name }})</li>
+      <li>Limits: <code>DAILY_SEND_CAP</code>, <code>MIN_SECONDS_BETWEEN_SENDS</code>, <code>INBOX_SYNC_MINUTES</code></li>
+    </ul>
+    <p class="mute">X prices used for the estimate: post ${{ price.post_read }}, profile ${{ price.user_read }}, DM read ${{ price.dm_event_read }}, DM sent ${{ price.dm_send }}.</p>
+  </div>
+</details>
+{% endblock %}

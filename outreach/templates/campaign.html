@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% import "_m.html" as m with context %}
+{% set running = job and job.status in ('queued','running') %}
+{% block head %}{% if running %}<meta http-equiv="refresh" content="3">{% endif %}{% endblock %}
+{% block back %}<a class="back" href="/" aria-label="Back to home">{{ m.icon('back', 20) }}</a>{% endblock %}
+{% block heading %}{{ c.name }}{% endblock %}
+{% block subhead %}<p class="sub">{{ stages.values()|sum }} people found · drafts at fit {{ c.min_score }}+</p>{% endblock %}
+{% block body %}
+<dl class="spec" style="padding-top:12px">
+  <dt>Looking for</dt><dd>{{ c.segment }}</dd>
+  {% if c.query %}<dt>X search</dt><dd><span class="mono">{{ c.query }}</span> <span class="mute small">· up to {{ c.max_posts }} posts</span></dd>{% endif %}
+  {% if c.seeds %}<dt>Seeds</dt><dd>{{ c.seeds }} <span class="mute small">· up to {{ c.max_seed_following }} each</span></dd>{% endif %}
+</dl>
+<div class="acts" style="padding:0 16px 14px;margin-top:0;border-bottom:1px solid var(--line)">
+  <form class="inline" method="post" action="/campaigns/{{ c.id }}/run">
+    <button class="blue" {% if running %}disabled{% endif %}>{{ 'Working…' if running else ('Find more people' if stages else 'Find people') }}</button>
+  </form>
+  {% if remaining and not running %}
+  <form class="inline" method="post" action="/campaigns/{{ c.id }}/deep"><button class="sm">Take a closer look at {{ [remaining, 10]|min }} more</button></form>
+  {% endif %}
+  <span class="small mute">{% if live %}Each run costs up to ${{ '%.2f' % est }} in X reads.{% else %}Demo: free.{% endif %} Running again only adds new people.</span>
+</div>
+
+{% if job %}
+<details class="log" {% if running or job.status == 'error' %}open{% endif %}>
+  <summary>{% if running %}<span class="st acc"><i></i>Working…</span> this page updates on its own{% elif job.status == 'error' %}<span class="st bad"><i></i>Last run failed</span> · show details{% else %}<span class="st good"><i></i>Last run finished</span> · {{ job.finished_at|ago }} · show details{% endif %}</summary>
+  <pre class="log">{{ job.log or 'Waiting to start…' }}</pre>
+</details>
+{% endif %}
+
+<nav class="tabs" aria-label="Filter people">
+  <a href="?show=all" class="{{ 'on' if show not in ('fit','wait','rest') }}">All {{ stages.values()|sum }}</a>
+  <a href="?show=fit" class="{{ 'on' if show == 'fit' }}">Good fits {{ counts.fit }}</a>
+  <a href="?show=wait" class="{{ 'on' if show == 'wait' }}">Waiting {{ counts.wait }}</a>
+  <a href="?show=rest" class="{{ 'on' if show == 'rest' }}">Skipped {{ counts.rest }}</a>
+</nav>
+{% if stages.get('drafted') %}
+<a class="item link" href="/review" style="color:inherit;text-decoration:none;background:var(--acc-soft)">
+  <div class="body"><b>{{ stages.get('drafted') }} draft{{ 's' if stages.get('drafted') != 1 }} ready</b> <span class="meta">· review and approve →</span></div>
+</a>
+{% endif %}
+
+{% for p in prospects %}
+{% set reasons = p.reasons|fromjson %}
+{% set flags = p.red_flags|fromjson %}
+{% set low = p.stage == 'screened' and (p.score or 0) < floor %}
+<article class="item">
+  {{ m.avatar(p.username, p.name) }}
+  <div class="body">
+    <div class="who">
+      <b>{{ p.name or p.username }}</b>
+      {{ m.handle(p.username) }}
+    </div>
+    <p class="meta small">{{ p.location or 'No location' }} · {{ '{:,}'.format(p.followers) }} followers · {% if p.source.startswith('seed:') %}followed by {{ p.source[5:] }}{% else %}found in search{% endif %}</p>
+    {% if p.focus %}<p class="text">{{ p.focus }}</p>{% endif %}
+    {% if reasons and reasons[0].quote %}
+    <div class="why" style="margin-top:4px"><ul>{% for x in reasons %}<li>{{ x.claim }}{% if x.quote %} <q>{{ x.quote }}</q>{% endif %}</li>{% endfor %}</ul></div>
+    {% endif %}
+    {% for f in flags %}<div class="issue warn small" style="margin-top:2px">{{ m.icon('warn', 14) }}<span>{{ f[:1]|upper }}{{ f[1:] }}</span></div>{% endfor %}
+    <div class="chips">
+      {% if p.stage == 'screened' %}
+        {% if low %}<span class="st mute"><i></i>below threshold</span><span class="small mute">Fit {{ p.score }} on first look, under {{ floor }}</span>
+        {% else %}<span class="st acc"><i></i>waiting for a closer look</span>{% endif %}
+      {% elif p.stage == 'rejected' %}<span class="st mute"><i></i>below threshold</span><span class="small mute">Fit {{ p.score }} after reading recent posts, under {{ c.min_score }}</span>
+      {% elif p.stage == 'drafted' and p.msg_status and p.msg_status != 'draft' %}{{ m.status(p.msg_status) }}
+      {% else %}{{ m.stage(p.stage) }}{% endif %}
+      {% if p.sea_signal %}<span class="small mute" title="Lives in or works with Southeast Asia">Southeast Asia</span>{% endif %}
+      {% if p.stage not in ('messaged', 'replied', 'excluded') %}
+      <form class="inline" method="post" action="/prospects/{{ p.id }}/dnc" style="margin-left:auto" onsubmit="return confirm('Never message @{{ p.username }}? This applies to every campaign.')">
+        <input type="hidden" name="next" value="/campaigns/{{ c.id }}?show={{ show }}"><button class="text tiny">Never contact</button></form>
+      {% endif %}
+    </div>
+    {% if p.stage == 'screened' and (not low or not flags) %}
+    <div class="acts" style="margin-top:8px">
+      {% if p.stage == 'screened' %}
+        {% if not low %}
+        <form class="inline" method="post" action="/prospects/{{ p.id }}/qualify"><button class="sm">Check &amp; draft</button></form>
+        {% elif not flags %}
+        <form class="inline" method="post" action="/prospects/{{ p.id }}/qualify" onsubmit="return confirm('@{{ p.username }} scored {{ p.score }}. Check anyway?{{ ' This reads their recent posts (~$0.05).' if live }}')"><button class="text sm">Check anyway</button></form>
+        {% endif %}
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  <div class="score">{% if p.score is not none %}<b>{{ p.score }}</b><span>fit</span>{% endif %}</div>
+</article>
+{% else %}
+<div class="empty"><b>{{ 'No one here yet' if show == 'all' else 'Nobody in this list' }}</b>{% if show == 'all' %}Run “Find people” to search X.{% endif %}</div>
+{% endfor %}
+{% endblock %}

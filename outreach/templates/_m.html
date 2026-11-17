@@ -1,0 +1,48 @@
+{# Shared bits. Icons are simple 24px strokes drawn for this app. #}
+{% macro icon(name, size=22) -%}
+<svg class="ic" width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+{%- if name == 'home' -%}<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/>
+{%- elif name == 'review' -%}<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9.5h8M8 12.5h5"/>
+{%- elif name == 'sent' -%}<path d="M21 3 3 10.5l7 2.5 2.5 7z"/><path d="m10 13 5-5"/>
+{%- elif name == 'new' -%}<circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/>
+{%- elif name == 'settings' -%}<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>
+{%- elif name == 'ext' -%}<path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5"/>
+{%- elif name == 'x' -%}<path d="M6 6l12 12M18 6 6 18"/>
+{%- elif name == 'warn' -%}<path d="M12 4 2.5 20h19z"/><path d="M12 10v4M12 17v.01"/>
+{%- elif name == 'check' -%}<path d="m5 12.5 4.5 4.5L19 7"/>
+{%- elif name == 'back' -%}<path d="M15 5l-7 7 7 7"/>
+{%- endif -%}
+</svg>
+{%- endmacro %}
+
+{% macro avatar(handle, name='') -%}
+<span class="av" style="--h: {{ handle|hue }}" aria-hidden="true">{{ ((name or handle or '?')|trim)[:1]|upper }}</span>
+{%- endmacro %}
+
+{% set LABELS = {'draft':'draft','approved':'queued','sending':'sending','sent':'sent',
+  'needs_check':'check on X','failed':'failed','blocked':'blocked','rejected':'rejected'} %}
+{% set TONES = {'draft':'acc','approved':'mute','sending':'mute','sent':'good','needs_check':'bad',
+  'failed':'bad','blocked':'warn','rejected':'mute'} %}
+{% macro status(s) -%}
+<span class="st {{ TONES.get(s, 'mute') }}"><i></i>{{ LABELS.get(s, s|replace('_', ' ')) }}</span>
+{%- endmacro %}
+
+{% set STAGES = {'found':'found','screened':'screened','qualified':'good fit','drafted':'draft ready',
+  'messaged':'messaged','replied':'replied','rejected':'below threshold','dm_closed':'DMs closed',
+  'excluded':'skipped'} %}
+{% set STAGE_TONES = {'qualified':'good','drafted':'acc','messaged':'good','replied':'good',
+  'rejected':'mute','dm_closed':'warn','excluded':'warn'} %}
+{% macro stage(s) -%}
+<span class="st {{ STAGE_TONES.get(s, 'mute') }}"><i></i>{{ STAGES.get(s, s) }}</span>
+{%- endmacro %}
+
+{# Links to X only in live mode; demo people are fictional. #}
+{% macro handle(h) -%}
+{%- if live -%}<a class="h" href="https://x.com/{{ h }}" target="_blank" rel="noopener">@{{ h }}</a>
+{%- else -%}<span class="h" title="Demo person, not a real X account">@{{ h }}</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro open_x(label='Reply on X', cls='dark sm') -%}
+{%- if live -%}<a class="btn {{ cls }}" href="https://x.com/messages" target="_blank" rel="noopener">{{ label }} {{ icon('ext', 16) }}</a>
+{%- else -%}<button type="button" class="{{ cls }}" disabled title="Demo mode: there is no real conversation on X">{{ label }} (demo)</button>{%- endif -%}
+{%- endmacro %}

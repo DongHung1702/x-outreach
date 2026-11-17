@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% import "_m.html" as m with context %}
+{% set errors = errors or {} %}
+{% block heading %}New campaign{% endblock %}
+{% block subhead %}<p class="sub">Describe who you want to meet. Nothing is sent from here.</p>{% endblock %}
+{% macro err(key) -%}
+{%- if errors.get(key) %}<p class="err" id="e-{{ key }}">{{ m.icon('x', 14) }}<span>{{ errors[key] }}</span></p>{% endif -%}
+{%- endmacro %}
+{% macro inv(key) -%}{% if errors.get(key) %}aria-invalid="true" aria-describedby="e-{{ key }}"{% endif %}{%- endmacro %}
+{% block body %}
+{% if errors %}<div class="note bad" role="alert">Fix {{ errors|length }} thing{{ 's' if errors|length > 1 }} below, then create the campaign.</div>{% endif %}
+{% if note %}<div class="note {{ 'ok' if ok }}" role="status">{{ note }}</div>{% endif %}
+<form method="post" action="/campaigns" style="padding-bottom:16px" novalidate>
+  <label class="field {{ 'invalid' if errors.name }}"><span>Name</span>
+    <input type="text" name="name" value="{{ form.name }}" maxlength="80" placeholder="Robotics founders in Vietnam" {{ inv('name') }}></label>
+  {{ err('name') }}
+
+  <label class="field {{ 'invalid' if errors.segment }}"><span>Who you want to meet</span>
+    <textarea name="segment" rows="4" placeholder="Founders and researchers building robots or embodied AI, ideally in Southeast Asia. People who ship things, not news pages or companies." {{ inv('segment') }}>{{ form.segment }}</textarea></label>
+  {{ err('segment') or '' }}{% if not errors.segment %}<p class="hint">Plain English. Used to search, to score people and to write the first line.</p>{% endif %}
+
+  <h2 class="section" style="font-size:17px;padding-top:20px">Where to look <span class="sub">Fill in one or both.</span></h2>
+  <div class="grid2">
+    <div>
+      <label class="field {{ 'invalid' if errors.query }}" style="margin-top:4px"><span>X search (last 7 days)</span>
+        <textarea name="query" rows="3" placeholder='(robotics OR "embodied AI") (shipped OR "open-sourced") -is:retweet lang:en' {{ inv('query') }}>{{ form.query }}</textarea></label>
+      {{ err('query') }}
+      <div style="margin:8px 16px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="sm" name="action" value="suggest">Write the search for me</button>
+        <a class="small" href="https://docs.x.com/x-api/posts/search/integrate/build-a-query" target="_blank" rel="noopener">Search syntax</a>
+      </div>
+      <label class="field"><span>Posts to read</span>
+        <input type="number" name="max_posts" value="{{ form.max_posts }}" min="10" max="500" inputmode="numeric"></label>
+    </div>
+    <div>
+      <label class="field" style="margin-top:4px"><span>Seed accounts</span>
+        <input type="text" name="seeds" value="{{ form.seeds }}" placeholder="{{ '@demo_sea_ai_hub' if not live else '@someone @another' }}" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+      <p class="hint">We look at who they follow.{% if not live %} In demo mode, try <b>@demo_sea_ai_hub</b>.{% endif %}</p>
+      <label class="field"><span>Accounts per seed</span>
+        <input type="number" name="max_seed_following" value="{{ form.max_seed_following }}" min="1" max="1000" inputmode="numeric"></label>
+    </div>
+  </div>
+
+  <h2 class="section" style="font-size:17px;padding-top:20px">How you introduce yourself</h2>
+  <label class="field {{ 'invalid' if errors.pitch }}" style="margin-top:4px"><span>About you</span>
+    <textarea name="pitch" rows="3" placeholder="I'm Mai, I run a small community for AI builders in Hanoi. We like meeting people early, no pitch deck needed." {{ inv('pitch') }}>{{ form.pitch }}</textarea></label>
+  {{ err('pitch') }}{% if not errors.pitch %}<p class="hint">One or two sentences. This is the only thing the AI may say about you.</p>{% endif %}
+
+  <label class="field" style="max-width:240px"><span>Write a draft when fit is at least</span>
+    <input type="number" name="min_score" value="{{ form.min_score }}" min="0" max="100" inputmode="numeric"></label>
+  <p class="hint">Out of 100. Lower it to see more people, raise it to see fewer.</p>
+
+  <div class="acts" style="padding:0 16px">
+    <button class="blue" name="action" value="create">Create campaign</button>
+  </div>
+</form>
+{% endblock %}
