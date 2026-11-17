@@ -10,6 +10,8 @@ segment / seeds ──► X search + seed followings ──► screen (bio + mat
       ──► validator ──► you review / edit / approve ──► paced sender ──► inbox sync
 ```
 
+**Demo video (4.5 min, silent with captions):** https://github.com/DongHung1702/x-outreach/releases/download/v1.0/x-outreach-demo.mp4
+
 ## Status
 
 Demo mode and the Claude scoring/drafting are tested end to end. The live X path (OAuth, search, DM send, inbox sync) is written against the official v2 API and covered by tests with a fake X client, but **has not yet been run against a real X account**. Treat your first live campaign as the test: start with a seed you control and a daily cap of 1–2.
@@ -19,7 +21,7 @@ Demo mode and the Claude scoring/drafting are tested end to end. The live X path
 You need Python 3.11+ and [uv](https://docs.astral.sh/uv/getting-started/installation/).
 
 ```bash
-git clone <this repo> && cd x-outreach
+git clone https://github.com/DongHung1702/x-outreach.git && cd x-outreach
 uv sync
 uv run outreach            # open http://127.0.0.1:8000
 ```
