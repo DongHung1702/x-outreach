@@ -55,7 +55,7 @@ You approve each message. Approved messages go out from your connected X account
 | LLM | ≈ $0.05–0.10 per run |
 | Idle inbox sync | ≈ $0.05 per check |
 
-**Roughly $2 per 20 well-researched conversations.** No subscriptions are needed. The app meters spend per endpoint, and the X console is the source of truth. My own testing cost: _[fill after live test]_.
+**Roughly $2 per 20 well-researched conversations.** No subscriptions are needed. The app meters spend per endpoint, and the X console is the source of truth. My own testing cost so far: about $0.10 in Claude calls (demo mode plus the eval below). I have not yet run a live X test, so I have no X spend of my own to report.
 
 ## What I'd do next
 
@@ -95,9 +95,9 @@ I used Claude Code as a pair engineer, with a fixed loop: **spec → plan → te
    Each behaviour bug got a failing test first (6 tests); the rest were copy and layout fixes, checked again with screenshots.
 6. **Measuring output quality.** `scripts/eval_scoring.py` runs the scorer on 12 hand-labelled profiles:
    - Keyword fallback: precision 1.00, recall 0.33.
-   - Claude: _[fill]_.
-   - Drafts passing the validator first time: _[fill]_.
-7. **Seeing it work.** I clicked through the UI headless at 1280 px and 375 px (no horizontal scroll, no console errors), then did a live send between two accounts I control: _[fill]_.
+   - Claude (claude-haiku-5-5): precision 1.00, recall 1.00 (9 fits, 3 non-fits). Twelve fictional profiles is a smoke test, not a benchmark.
+   - Drafts passing the validator first time: 9/9.
+7. **Seeing it work.** I clicked through the UI headless at 1280 px and 375 px (no horizontal scroll, no console errors), and ran the full flow in demo mode with Claude doing the scoring and drafting. **Not done: a live send on X.** I ran out of time to set up an X developer app, so the X calls (search, followings, DM send, inbox sync) are covered by tests against a fake X client and by the demo fixtures, not by a real account. That is the first thing I would check when you connect yours.
 
 **Where the AI was wrong and got caught:**
 - A test used an impossible timestamp.

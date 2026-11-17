@@ -10,6 +10,10 @@ segment / seeds ──► X search + seed followings ──► screen (bio + mat
       ──► validator ──► you review / edit / approve ──► paced sender ──► inbox sync
 ```
 
+## Status
+
+Demo mode and the Claude scoring/drafting are tested end to end. The live X path (OAuth, search, DM send, inbox sync) is written against the official v2 API and covered by tests with a fake X client, but **has not yet been run against a real X account**. Treat your first live campaign as the test: start with a seed you control and a daily cap of 1–2.
+
 ## Quick start (about 5 minutes, demo mode)
 
 You need Python 3.11+ and [uv](https://docs.astral.sh/uv/getting-started/installation/).
