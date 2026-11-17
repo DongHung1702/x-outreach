@@ -111,6 +111,9 @@ class LLM(Protocol):
     ) -> dict[str, Any]: ...
 
 
+THINKING_HEADROOM = 2000
+
+
 class ClaudeLLM:
     def __init__(self) -> None:
         import anthropic
@@ -119,6 +122,8 @@ class ClaudeLLM:
         self.name = f"Claude ({settings.llm_model})"
 
     def _json(self, prompt: str, schema: dict[str, Any], max_tokens: int, step: str) -> Any:
+        # Thinking tokens count toward max_tokens, so keep generous headroom over the JSON size.
+        max_tokens += THINKING_HEADROOM
         resp = self.client.messages.create(
             model=settings.llm_model,
             max_tokens=max_tokens,
@@ -133,6 +138,8 @@ class ClaudeLLM:
         xapi.record("llm", step, u.input_tokens + u.output_tokens, cost)
         if resp.stop_reason == "refusal":
             raise RuntimeError("model declined this request")
+        if resp.stop_reason == "max_tokens":
+            raise RuntimeError("the AI answer was cut off (token limit); try again")
         text = next(b.text for b in resp.content if b.type == "text")
         return json.loads(text)
 
